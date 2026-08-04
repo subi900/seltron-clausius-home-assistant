@@ -1,0 +1,33 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "SeltronHome Clausius",
+        "description": "SeltronHome zur Zustandsanzeige und für eng begrenzte, rückgelesene WDC-Bedienfunktionen verbinden.",
+        "data": {
+          "email": "E-Mail",
+          "password": "Passwort"
+        }
+      }
+    },
+    "error": {
+      "invalid_auth": "Anmeldung fehlgeschlagen",
+      "cannot_connect": "Verbindung nicht möglich",
+      "no_installations": "Keine kompatible GWD3/WDC-Anlage gefunden"
+    },
+    "abort": {
+      "already_configured": "Dieses SeltronHome-Konto ist bereits eingerichtet"
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Kanalbeschriftungen",
+        "description": "Optionale lokale Anzeigenamen. Stabile Kanalcodes und Unique IDs werden nicht geändert. Die Vorschlagswerte zeigen die Namen aus der Cloud."
+      }
+    },
+    "error": {
+      "invalid_label": "Eine Beschriftung oder ein Kanal ist ungültig"
+    }
+  }
+}

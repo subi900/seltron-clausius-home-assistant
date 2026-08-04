@@ -1,0 +1,36 @@
+{
+  "gateway": {
+    "manufacturer": "SELTRON",
+    "model": "GWD3E",
+    "hardwareVersion": "1.0.0",
+    "softwareVersion": "1.4.6",
+    "connectionState": true,
+    "isActive": true
+  },
+  "controller": {
+    "manufacturer": "SELTRON",
+    "model": "WDC20",
+    "hardwareVersion": "2.0.0",
+    "softwareVersion": "3.5.1",
+    "isActive": true,
+    "hasActiveBoilerWarnings": false,
+    "hasActiveCommunicationWarnings": false,
+    "hasActiveMessages": false,
+    "hasActiveSensorWarnings": false,
+    "temperatureSensors": [
+      {"code": "T1", "name": "T1", "calculated": -50.0},
+      {"code": "T2", "name": "T2", "calculated": 29.2, "measured": 25.0},
+      {"code": "TR1", "name": "TR1", "calculated": 6.0, "measured": 30.0}
+    ],
+    "relays": [
+      {"code": "R1", "name": "R1", "state": false},
+      {"code": "R4", "name": "R4", "state": true}
+    ],
+    "circuits": [
+      {"code": "DHWC", "name": "DHWC", "operationMode": {"type": "Timer"}, "activeTimetable": "P1"},
+      {"code": "HC1", "name": "HC1", "operationMode": {"type": "Off"}, "activeTimetable": "P2"}
+    ],
+    "warnings": [],
+    "messages": []
+  }
+}

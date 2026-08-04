@@ -1,0 +1,35 @@
+[build-system]
+requires = ["setuptools>=70"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "seltron-clausius"
+version = "0.2.2"
+description = "SeltronHome/Clausius status client with narrowly verified Home Assistant controls"
+requires-python = ">=3.11"
+dependencies = ["aiohttp>=3.9,<3.13"]
+
+[project.scripts]
+seltron-readonly-probe = "custom_components.seltron_clausius.probe:main"
+
+[tool.setuptools.packages.find]
+include = ["custom_components*"]
+exclude = ["release*", "temp_unzipped*", "tests*"]
+
+[project.optional-dependencies]
+test = [
+  "pytest>=8",
+  "pytest-asyncio>=0.23",
+  "pytest-cov>=5",
+  "aioresponses>=0.7.6",
+  "homeassistant==2023.12.4",
+]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+addopts = "-ra"
+
+[tool.coverage.run]
+branch = true
+source = ["custom_components.seltron_clausius"]

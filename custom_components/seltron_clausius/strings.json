@@ -1,0 +1,33 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "SeltronHome Clausius",
+        "description": "Connect to SeltronHome for status monitoring and narrowly verified WDC controls.",
+        "data": {
+          "email": "Email",
+          "password": "Password"
+        }
+      }
+    },
+    "error": {
+      "invalid_auth": "Authentication failed",
+      "cannot_connect": "Unable to connect",
+      "no_installations": "No compatible GWD3/WDC installation found"
+    },
+    "abort": {
+      "already_configured": "This SeltronHome account is already configured"
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Channel labels",
+        "description": "Optional local display labels. Stable channel codes and unique IDs are not changed. The suggested values show the cloud names."
+      }
+    },
+    "error": {
+      "invalid_label": "A label or channel is invalid"
+    }
+  }
+}
