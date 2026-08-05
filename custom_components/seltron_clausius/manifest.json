@@ -1,12 +1,12 @@
 {
   "domain": "seltron_clausius",
   "name": "SeltronHome Clausius",
-  "version": "0.4.1",
   "codeowners": ["@subi900"],
   "config_flow": true,
   "documentation": "https://github.com/subi900/seltron-clausius-home-assistant",
-  "issue_tracker": "https://github.com/subi900/seltron-clausius-home-assistant/issues",
   "integration_type": "hub",
   "iot_class": "cloud_polling",
-  "requirements": []
+  "issue_tracker": "https://github.com/subi900/seltron-clausius-home-assistant/issues",
+  "requirements": [],
+  "version": "0.4.1"
 }
