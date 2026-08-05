@@ -8,15 +8,26 @@
           "email": "E-Mail",
           "password": "Passwort"
         }
+      },
+      "reauth_confirm": {
+        "title": "SeltronHome neu verbinden",
+        "description": "Melde dich erneut mit demselben SeltronHome-Konto an.",
+        "data": {
+          "email": "E-Mail",
+          "password": "Passwort"
+        }
       }
     },
     "error": {
       "invalid_auth": "Anmeldung fehlgeschlagen",
       "cannot_connect": "Verbindung nicht möglich",
-      "no_installations": "Keine kompatible GWD3/WDC-Anlage gefunden"
+      "no_installations": "Keine kompatible GWD3/WDC-Anlage gefunden",
+      "wrong_account": "Verwende dasselbe SeltronHome-Konto wie bei der Ersteinrichtung"
     },
     "abort": {
-      "already_configured": "Dieses SeltronHome-Konto ist bereits eingerichtet"
+      "already_configured": "Dieses SeltronHome-Konto ist bereits eingerichtet",
+      "reauth_successful": "SeltronHome wurde erfolgreich neu verbunden",
+      "reauth_entry_missing": "Der SeltronHome-Konfigurationseintrag existiert nicht mehr"
     }
   },
   "options": {

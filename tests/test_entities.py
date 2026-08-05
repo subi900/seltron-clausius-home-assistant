@@ -84,8 +84,8 @@ async def test_entity_platforms_expose_confirmed_status_without_controls() -> No
 
     assert len(sensors) == 9
     assert len(binary_sensors) == 9
-    assert len(switches) == 4
-    assert len(datetimes) == 3
+    assert len(switches) == 0
+    assert len(datetimes) == 0
     assert any(entity.native_value == 29.2 for entity in sensors)
     assert any(entity.native_value == "Timer" for entity in sensors)
     assert any(entity.native_value == "P1" for entity in sensors)
@@ -108,17 +108,7 @@ async def test_entity_platforms_expose_confirmed_status_without_controls() -> No
     assert boiler.is_on is r1.is_on
     assert boiler.extra_state_attributes == {"output": "R1"}
     assert not any(entity.name == "WaterPump" for entity in binary_sensors)
-    assert {entity.name for entity in switches} == {
-        "DHWC Einzel-Aktivierung",
-        "HC1 Party-Modus",
-        "HC1 Eco-Modus",
-        "HC1 Urlaubsmodus",
-    }
-    assert {entity.name for entity in datetimes} == {
-        "HC1 Party bis",
-        "HC1 Eco bis",
-        "HC1 Urlaub bis",
-    }
+
     assert any(
         entity.name == "Heizkörperkreis mode"
         and entity.unique_id == "entry-test_circuit_HC1_mode"

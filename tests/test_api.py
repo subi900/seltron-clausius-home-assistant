@@ -4,7 +4,11 @@ from typing import Any, Self
 
 import pytest
 
-from custom_components.seltron_clausius.api import SeltronApi, UnsafePathError
+from custom_components.seltron_clausius.api import (
+    AuthenticationError,
+    SeltronApi,
+    UnsafePathError,
+)
 
 
 class FakeResponse:
@@ -24,12 +28,13 @@ class FakeResponse:
 
 
 class RecordingSession:
-    def __init__(self) -> None:
+    def __init__(self, response: FakeResponse | None = None) -> None:
         self.calls: list[tuple[str, str, dict[str, Any]]] = []
+        self.response = response or FakeResponse()
 
     def get(self, url: str, **kwargs: Any) -> FakeResponse:
         self.calls.append(("GET", url, kwargs))
-        return FakeResponse()
+        return self.response
 
 
 @pytest.mark.asyncio
@@ -55,3 +60,14 @@ async def test_data_request_rejects_paths_outside_seltron_api(path: str) -> None
         await api.async_get(path)
 
     assert session.calls == []
+
+
+@pytest.mark.asyncio
+async def test_api_maps_rejected_access_token_to_reauthentication() -> None:
+    response = FakeResponse()
+    response.status = 401
+    session = RecordingSession(response)
+    api = SeltronApi(session, access_token="expired-access")  # type: ignore[arg-type]
+
+    with pytest.raises(AuthenticationError, match="rejected"):
+        await api.async_get("/api/accounts/me")

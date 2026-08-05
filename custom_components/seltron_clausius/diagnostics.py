@@ -1,6 +1,19 @@
 from __future__ import annotations
 
+from dataclasses import asdict
 from typing import Any
+
+from homeassistant.components.diagnostics import async_redact_data
+from homeassistant.config_entries import ConfigEntry
+from homeassistant.core import HomeAssistant
+
+from .const import (
+    CONF_ACCESS_TOKEN,
+    CONF_EXPIRES_AT,
+    CONF_REFRESH_TOKEN,
+    DOMAIN,
+)
+from .labels import CONF_LABELS
 
 REDACTED = "**REDACTED**"
 _SENSITIVE_EXACT = {
@@ -39,3 +52,29 @@ def redact_payload(value: Any) -> Any:
     if isinstance(value, tuple):
         return tuple(redact_payload(item) for item in value)
     return value
+
+
+async def async_get_config_entry_diagnostics(
+    hass: HomeAssistant, entry: ConfigEntry
+) -> dict[str, Any]:
+    """Return useful controller status without account or installation identifiers."""
+    coordinator = hass.data[DOMAIN][entry.entry_id]
+    return async_redact_data(
+        {
+            "config_entry": {
+                "data": dict(entry.data),
+                "options": dict(entry.options),
+            },
+            "runtime": asdict(coordinator.data),
+        },
+        {
+            CONF_ACCESS_TOKEN,
+            CONF_REFRESH_TOKEN,
+            CONF_EXPIRES_AT,
+            CONF_LABELS,
+            "subscription_id",
+            "resource_group_id",
+            "gateway_id",
+            "controller_id",
+        },
+    )

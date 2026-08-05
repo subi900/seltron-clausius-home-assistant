@@ -11,6 +11,8 @@ from custom_components.seltron_clausius.api import (
 
 
 class FakeResponse:
+    status = 200
+
     async def __aenter__(self):
         return self
 

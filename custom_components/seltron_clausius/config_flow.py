@@ -42,7 +42,7 @@ class SeltronConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     session, access_token=tokens.access_token
                 ).async_discover_installations()
                 if not installations:
-                    errors["base"] = "no_installation"
+                    errors["base"] = "no_installations"
                 else:
                     # Stable duplicate protection without storing the email address.
                     unique_id = hashlib.sha256(email.encode("utf-8")).hexdigest()
@@ -71,6 +71,65 @@ class SeltronConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         )
         return self.async_show_form(
             step_id="user", data_schema=schema, errors=errors
+        )
+
+    async def async_step_reauth(self, entry_data: dict[str, object]) -> FlowResult:
+        """Start reauthentication after a refresh token is rejected."""
+        return await self.async_step_reauth_confirm()
+
+    async def async_step_reauth_confirm(self, user_input=None) -> FlowResult:
+        """Replace tokens only after the same account authenticates successfully."""
+        errors: dict[str, str] = {}
+        if user_input is not None:
+            email = str(user_input[CONF_EMAIL]).strip().casefold()
+            password = str(user_input[CONF_PASSWORD])
+            entry = self.hass.config_entries.async_get_entry(self.context["entry_id"])
+            if entry is None:
+                return self.async_abort(reason="reauth_entry_missing")
+            if hashlib.sha256(email.encode("utf-8")).hexdigest() != entry.unique_id:
+                errors["base"] = "wrong_account"
+            else:
+                session = async_get_clientsession(self.hass)
+                try:
+                    tokens = await async_password_login(session, email, password)
+                    installations = await SeltronApi(
+                        session, access_token=tokens.access_token
+                    ).async_discover_installations()
+                    if not installations:
+                        errors["base"] = "no_installations"
+                    else:
+                        self.hass.config_entries.async_update_entry(
+                            entry,
+                            data={
+                                CONF_ACCESS_TOKEN: tokens.access_token,
+                                CONF_REFRESH_TOKEN: tokens.refresh_token,
+                                CONF_EXPIRES_AT: tokens.expires_at,
+                            },
+                        )
+                        await self.hass.config_entries.async_reload(entry.entry_id)
+                        return self.async_abort(reason="reauth_successful")
+                except AuthenticationError:
+                    errors["base"] = "invalid_auth"
+                except (
+                    aiohttp.ClientError,
+                    TimeoutError,
+                    RuntimeError,
+                    ValueError,
+                    KeyError,
+                ):
+                    errors["base"] = "cannot_connect"
+                finally:
+                    password = ""
+
+        return self.async_show_form(
+            step_id="reauth_confirm",
+            data_schema=vol.Schema(
+                {
+                    vol.Required(CONF_EMAIL): str,
+                    vol.Required(CONF_PASSWORD): str,
+                }
+            ),
+            errors=errors,
         )
 
 

@@ -39,6 +39,7 @@ async def async_setup_entry(
         for circuit in coordinator.data.status.circuits
         if circuit.code.upper().startswith("HC")
         for function, (label, icon) in FUNCTIONS.items()
+        if function in circuit.supported_user_functions
     )
 
 

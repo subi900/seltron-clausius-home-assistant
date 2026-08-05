@@ -2,12 +2,15 @@
 __pycache__/
 *.py[cod]
 .pytest_cache/
+.ruff_cache/
 .coverage
 htmlcov/
 *.egg-info/
 build/
 dist/
 temp_unzipped/
+/release/
+/seltron_dashboard_proposal.md
 *.log
 .env
 .env.*

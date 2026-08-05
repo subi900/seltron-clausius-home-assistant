@@ -8,6 +8,7 @@ import pytest
 from custom_components.seltron_clausius.api import Installation, TokenSet
 from custom_components.seltron_clausius.runtime import (
     SeltronRuntime,
+    WriteUnavailableError,
     WriteVerificationError,
 )
 
@@ -148,7 +149,8 @@ async def test_runtime_writes_mode_and_rereads() -> None:
     data = await runtime.async_set_operation_mode("HC1", "Day")
 
     assert api.mode_calls == [("HC1", "Day")]
-    assert api.refresh_calls == 1
+    # One fresh preflight read and one confirming read after the PUT.
+    assert api.refresh_calls == 2
     assert data.status.circuits[0].mode == "Day"
 
 
@@ -161,7 +163,7 @@ async def test_runtime_validates_temperature_then_rereads() -> None:
     data = await runtime.async_set_setpoint("HC1", "day", 21.5)
 
     assert api.temperature_calls == [("HC1", {"day": 21.5})]
-    assert api.refresh_calls == 1
+    assert api.refresh_calls == 2
     assert data.status.circuits[0].setpoints[0].value == 21.5
 
 
@@ -182,6 +184,23 @@ async def test_runtime_rejects_invalid_write_before_network() -> None:
 
 
 @pytest.mark.asyncio
+async def test_runtime_rereads_connection_and_blocks_write_when_gateway_disconnects() -> None:
+    api = WriteApi(make_installation())
+    runtime = make_runtime(api)
+    await runtime.async_update()
+    api.installation = replace(
+        api.installation,
+        gateway={"model": "GWD3E", "connectionState": False},
+    )
+
+    with pytest.raises(WriteUnavailableError, match="gateway"):
+        await runtime.async_set_operation_mode("HC1", "Day")
+
+    assert api.mode_calls == []
+    assert api.refresh_calls == 1
+
+
+@pytest.mark.asyncio
 async def test_runtime_does_not_claim_success_when_readback_differs() -> None:
     api = WriteApi(make_installation(), apply_writes=False)
     runtime = make_runtime(api)
@@ -190,7 +209,7 @@ async def test_runtime_does_not_claim_success_when_readback_differs() -> None:
     with pytest.raises(WriteVerificationError):
         await runtime.async_set_operation_mode("HC1", "Day")
 
-    assert api.refresh_calls == 3
+    assert api.refresh_calls == 4
 
 
 @pytest.mark.asyncio
@@ -238,7 +257,7 @@ async def test_runtime_builds_party_function_from_controller_state_and_rereads()
             },
         )
     ]
-    assert api.refresh_calls == 1
+    assert api.refresh_calls == 2
     assert data.status.circuits[0].user_function == "Party"
 
 

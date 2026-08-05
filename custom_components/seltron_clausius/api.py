@@ -20,6 +20,7 @@ AUTH0_CLIENT_ID = "lbO893m2FNTundKaTrRM00jTw5LTLMz2"
 AUTH0_AUDIENCE = "https://api.seltronhome.com"
 AUTH0_REALM = "Username-Password-Authentication"
 AUTH0_SCOPE = "openid profile email offline_access"
+REQUEST_TIMEOUT = aiohttp.ClientTimeout(total=30)
 
 
 @dataclass(frozen=True)
@@ -44,7 +45,9 @@ async def async_password_login(
         "username": email,
         "password": password,
     }
-    async with session.post(AUTH0_TOKEN_URL, data=payload) as response:
+    async with session.post(
+        AUTH0_TOKEN_URL, data=payload, timeout=REQUEST_TIMEOUT
+    ) as response:
         if response.status != 200:
             raise AuthenticationError(f"Auth0 authentication failed (HTTP {response.status})")
         data = await response.json()
@@ -68,7 +71,9 @@ async def async_refresh_tokens(
         "client_id": AUTH0_CLIENT_ID,
         "refresh_token": refresh_token,
     }
-    async with session.post(AUTH0_TOKEN_URL, data=payload) as response:
+    async with session.post(
+        AUTH0_TOKEN_URL, data=payload, timeout=REQUEST_TIMEOUT
+    ) as response:
         if response.status != 200:
             raise AuthenticationError(f"Auth0 token refresh failed (HTTP {response.status})")
         data = await response.json()
@@ -129,13 +134,22 @@ class SeltronApi:
         self._session = session
         self._access_token = access_token
 
+    @staticmethod
+    def _raise_for_status(response: aiohttp.ClientResponse) -> None:
+        """Map rejected credentials to Home Assistant reauthentication."""
+        if response.status in {401, 403}:
+            raise AuthenticationError("Seltron access token was rejected")
+        response.raise_for_status()
+
     async def async_get(self, path: str) -> Any:
         """Fetch JSON data using the only supported Seltron data verb: GET."""
         if not path.startswith("/api/") or path.startswith("//") or "://" in path:
             raise UnsafePathError("Seltron data paths must start with /api/")
         headers = {"Authorization": f"Bearer {self._access_token}"}
-        async with self._session.get(f"{API_BASE_URL}{path}", headers=headers) as response:
-            response.raise_for_status()
+        async with self._session.get(
+            f"{API_BASE_URL}{path}", headers=headers, timeout=REQUEST_TIMEOUT
+        ) as response:
+            self._raise_for_status(response)
             return await response.json()
 
     def _heating_circuit_root(self, installation: Installation, circuit_code: str) -> str:
@@ -162,8 +176,9 @@ class SeltronApi:
             f"{API_BASE_URL}{path}",
             json={"type": mode},
             headers=headers,
+            timeout=REQUEST_TIMEOUT,
         ) as response:
-            response.raise_for_status()
+            self._raise_for_status(response)
 
     async def async_set_temperatures(
         self,
@@ -183,9 +198,12 @@ class SeltronApi:
             "correlationId": str(uuid4()),
         }
         async with self._session.put(
-            f"{API_BASE_URL}{path}", json=temperatures, headers=headers
+            f"{API_BASE_URL}{path}",
+            json=temperatures,
+            headers=headers,
+            timeout=REQUEST_TIMEOUT,
         ) as response:
-            response.raise_for_status()
+            self._raise_for_status(response)
 
     async def async_set_user_function(
         self,
@@ -201,9 +219,12 @@ class SeltronApi:
             "correlationId": str(uuid4()),
         }
         async with self._session.put(
-            f"{API_BASE_URL}{path}", json=payload, headers=headers
+            f"{API_BASE_URL}{path}",
+            json=payload,
+            headers=headers,
+            timeout=REQUEST_TIMEOUT,
         ) as response:
-            response.raise_for_status()
+            self._raise_for_status(response)
 
     async def async_discover_installations(self) -> list[Installation]:
         """Discover GWD3 gateways and WDC controllers using GET requests only."""

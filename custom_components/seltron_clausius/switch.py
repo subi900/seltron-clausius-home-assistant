@@ -38,8 +38,12 @@ async def async_setup_entry(
                     icon,
                 )
                 for function, (label, icon) in HEATING_FUNCTIONS.items()
+                if function in circuit.supported_user_functions
             )
-        elif circuit.code.upper() == "DHWC":
+        elif (
+            circuit.code.upper() == "DHWC"
+            and "SingleActivation" in circuit.supported_user_functions
+        ):
             entities.append(
                 UserFunctionSwitch(
                     coordinator,

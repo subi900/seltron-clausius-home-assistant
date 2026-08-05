@@ -40,6 +40,7 @@ class HeatingCircuitState:
     mode: str
     program: str | None
     supported_modes: tuple[str, ...] = ()
+    supported_user_functions: tuple[str, ...] = ()
     setpoints: tuple[TemperatureSetpoint, ...] = ()
     user_function: str = "Off"
     user_function_temperature: float | None = None
@@ -162,8 +163,9 @@ def parse_heating_circuits(raw: list[dict[str, Any]]) -> list[HeatingCircuitStat
                 setpoints.append(
                     TemperatureSetpoint(key, float(value), minimum, maximum, step)
                 )
+        user_function_present = isinstance(circuit.get("userFunction"), dict)
         user_function = circuit.get("userFunction")
-        if not isinstance(user_function, dict):
+        if not user_function_present:
             user_function = {}
         function_type = user_function.get("type")
         function_temperature = user_function.get("temperature")
@@ -176,6 +178,19 @@ def parse_heating_circuits(raw: list[dict[str, Any]]) -> list[HeatingCircuitStat
                 mode=mode,
                 program=program if isinstance(program, str) and program else None,
                 supported_modes=OPERATION_MODES.get(code.upper(), ()),
+                supported_user_functions=(
+                    (
+                        ("Party", "Eco", "Holiday", "Off")
+                        if code.upper().startswith("HC")
+                        else ("SingleActivation", "Off")
+                        if code.upper() == "DHWC"
+                        else ()
+                    )
+                    if user_function_present
+                    and isinstance(program, str)
+                    and bool(program)
+                    else ()
+                ),
                 setpoints=tuple(setpoints),
                 user_function=(
                     function_type if isinstance(function_type, str) else "Off"

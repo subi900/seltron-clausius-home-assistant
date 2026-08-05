@@ -39,6 +39,10 @@ class WriteVerificationError(RuntimeError):
     """The controller reread did not confirm a requested command."""
 
 
+class WriteUnavailableError(RuntimeError):
+    """The live gateway/controller state does not permit a safe write."""
+
+
 class SeltronRuntime:
     """Own token rotation, serialized polling, and narrowly verified controls."""
 
@@ -114,6 +118,13 @@ class SeltronRuntime:
             raise ValueError(f"Unknown heating circuit {circuit_code}")
         return circuit
 
+    @staticmethod
+    def _ensure_write_available(data: RuntimeData) -> None:
+        if not data.status.gateway.connected:
+            raise WriteUnavailableError("Seltron gateway is not connected")
+        if not data.status.controller.connected:
+            raise WriteUnavailableError("Seltron controller is not connected")
+
     async def async_update(self) -> RuntimeData:
         """Refresh tokens if needed and poll the known installation."""
         async with self._lock:
@@ -125,12 +136,11 @@ class SeltronRuntime:
     ) -> RuntimeData:
         """Validate, write, reread, and verify a confirmed circuit mode."""
         async with self._lock:
+            requested = validate_operation_mode(circuit_code, mode)
             api = await self._async_api()
-            if self._installation is None:
-                await self._async_refresh_installation(api)
-            current_data = self._runtime_data()
+            current_data = await self._async_refresh_installation(api)
+            self._ensure_write_available(current_data)
             circuit = self._circuit(current_data, circuit_code)
-            requested = validate_operation_mode(circuit.code, mode)
             if circuit.mode == requested:
                 return current_data
             assert self._installation is not None
@@ -152,12 +162,11 @@ class SeltronRuntime:
     ) -> RuntimeData:
         """Validate, write only one key, reread, and verify a confirmed setpoint."""
         async with self._lock:
+            requested = validate_setpoint(circuit_code, key, value)
             api = await self._async_api()
-            if self._installation is None:
-                await self._async_refresh_installation(api)
-            current_data = self._runtime_data()
+            current_data = await self._async_refresh_installation(api)
+            self._ensure_write_available(current_data)
             circuit = self._circuit(current_data, circuit_code)
-            requested = validate_setpoint(circuit.code, key, value)
             current = next((item for item in circuit.setpoints if item.key == key), None)
             if current is None:
                 raise ValueError(
@@ -196,12 +205,15 @@ class SeltronRuntime:
     ) -> RuntimeData:
         """Write and verify one allowlisted Clausius normal-user function."""
         async with self._lock:
+            requested = validate_user_function(circuit_code, function)
             api = await self._async_api()
-            if self._installation is None:
-                await self._async_refresh_installation(api)
-            current_data = self._runtime_data()
+            current_data = await self._async_refresh_installation(api)
+            self._ensure_write_available(current_data)
             circuit = self._circuit(current_data, circuit_code)
-            requested = validate_user_function(circuit.code, function)
+            if requested not in circuit.supported_user_functions:
+                raise ValueError(
+                    f"User function {requested} is not reported for {circuit.code}"
+                )
             if circuit.user_function == requested:
                 return current_data
             payload: dict[str, Any] = {

@@ -1,0 +1,10 @@
+title = "SeltronHome Clausius gitleaks configuration"
+
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "SeltronHome Auth0 public OAuth client identifier required by the client protocol"
+regexTarget = "match"
+regexes = ['''lbO893m2FNTundKaTrRM00jTw5LTLMz2''']
+paths = ['''custom_components/seltron_clausius/api\.py''']

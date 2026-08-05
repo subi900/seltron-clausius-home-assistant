@@ -116,6 +116,27 @@ def test_heating_circuit_parser_keeps_user_function_state() -> None:
     assert parsed[0].user_function_temperature == 24.0
     assert parsed[0].user_function_active_until == "2026-08-04T22:00:00"
     assert parsed[0].frost_temperature == 6.0
+    assert parsed[0].supported_user_functions == (
+        "Party",
+        "Eco",
+        "Holiday",
+        "Off",
+    )
+
+
+def test_heating_circuit_without_user_function_exposes_no_user_controls() -> None:
+    parsed = parse_heating_circuits(
+        [
+            {
+                "code": "HC1",
+                "operationMode": {"type": "Timer"},
+                "activeTimetable": "P1",
+                "temperatures": {"off": 6.0, "day": 22.0, "night": 18.0},
+            }
+        ]
+    )
+
+    assert parsed[0].supported_user_functions == ()
 
 
 def test_warning_parser_returns_only_explicitly_active_warnings() -> None:
