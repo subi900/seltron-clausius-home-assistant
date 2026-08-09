@@ -60,10 +60,10 @@ The integration sends requests only to the fixed SeltronHome API and Auth0 endpo
 ## Development
 
 ```bash
-uv sync --extra test
+uv sync --frozen --extra test
 uv run pytest -q
 uvx ruff check custom_components tests
-python -m compileall -q custom_components tests
+uv run python -m compileall -q custom_components tests
 ```
 
 See [CONTRIBUTING.md](CONTRIBUTING.md), [SECURITY.md](SECURITY.md), and [CHANGELOG.md](CHANGELOG.md).

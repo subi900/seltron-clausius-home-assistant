@@ -8,10 +8,10 @@ Contributions are welcome, especially redacted fixtures for additional Seltron c
 4. Run:
 
    ```bash
-   uv sync --extra test
+   uv sync --frozen --extra test
    uv run pytest -q
    uvx ruff check custom_components tests
-   python -m compileall -q custom_components tests
+   uv run python -m compileall -q custom_components tests
    ```
 
 5. Explain user-visible and safety-boundary changes in the pull request.
