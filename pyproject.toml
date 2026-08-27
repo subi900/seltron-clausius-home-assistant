@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "seltron-clausius"
-version = "0.4.1"
+version = "0.4.2"
 description = "SeltronHome/Clausius status client with narrowly verified Home Assistant controls"
 requires-python = ">=3.11"
 dependencies = ["aiohttp>=3.9,<3.13"]

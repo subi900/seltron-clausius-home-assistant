@@ -12,8 +12,13 @@ from .api import AuthenticationError, SeltronApi, async_password_login
 from .const import (
     CONF_ACCESS_TOKEN,
     CONF_EXPIRES_AT,
+    CONF_POLLING_INTERVAL,
     CONF_REFRESH_TOKEN,
+    DEFAULT_POLLING_INTERVAL,
     DOMAIN,
+    POLLING_INTERVAL_OPTIONS,
+    POLLING_INTERVALS,
+    polling_interval_seconds,
 )
 from .labels import CONF_LABELS, normalize_labels
 
@@ -159,16 +164,47 @@ class SeltronOptionsFlow(config_entries.OptionsFlow):
         errors: dict[str, str] = {}
         if user_input is not None:
             try:
-                if not set(user_input).issubset(allowed):
+                polling_interval = user_input.get(CONF_POLLING_INTERVAL)
+                if (
+                    type(polling_interval) is not int
+                    or polling_interval not in POLLING_INTERVALS
+                ):
+                    raise ValueError("Unknown polling interval")
+                label_input = {
+                    key: value
+                    for key, value in user_input.items()
+                    if key != CONF_POLLING_INTERVAL
+                }
+                if not set(label_input).issubset(allowed):
                     raise ValueError("Unknown label channel")
                 return self.async_create_entry(
-                    title="", data={CONF_LABELS: normalize_labels(user_input)}
+                    title="",
+                    data={
+                        **self._seltron_entry.options,
+                        CONF_POLLING_INTERVAL: polling_interval,
+                        CONF_LABELS: normalize_labels(label_input),
+                    },
                 )
-            except ValueError:
-                errors["base"] = "invalid_label"
+            except ValueError as err:
+                errors["base"] = (
+                    "invalid_polling_interval"
+                    if str(err) == "Unknown polling interval"
+                    else "invalid_label"
+                )
 
         existing = self._seltron_entry.options.get(CONF_LABELS, {})
-        schema = vol.Schema(
+        existing_polling_interval = polling_interval_seconds(
+            self._seltron_entry.options.get(
+                CONF_POLLING_INTERVAL, DEFAULT_POLLING_INTERVAL
+            )
+        )
+        schema_fields = {
+            vol.Required(
+                CONF_POLLING_INTERVAL,
+                default=existing_polling_interval,
+            ): vol.In(POLLING_INTERVAL_OPTIONS)
+        }
+        schema_fields.update(
             {
                 vol.Optional(
                     key,
@@ -178,6 +214,7 @@ class SeltronOptionsFlow(config_entries.OptionsFlow):
                 for key, fallback in fields
             }
         )
+        schema = vol.Schema(schema_fields)
         return self.async_show_form(
             step_id="init", data_schema=schema, errors=errors
         )

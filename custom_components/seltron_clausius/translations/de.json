@@ -33,12 +33,16 @@
   "options": {
     "step": {
       "init": {
-        "title": "Kanalbeschriftungen",
-        "description": "Optionale lokale Anzeigenamen. Stabile Kanalcodes und Unique IDs werden nicht geändert. Die Vorschlagswerte zeigen die Namen aus der Cloud."
+        "title": "Abfrageintervall und Kanalbeschriftungen",
+        "description": "Wähle das Abfrageintervall und optionale lokale Anzeigenamen. Stabile Kanalcodes und Unique IDs werden nicht geändert. Die Vorschlagswerte zeigen die Namen aus der Cloud.",
+        "data": {
+          "polling_interval": "Abfrageintervall (Sekunden)"
+        }
       }
     },
     "error": {
-      "invalid_label": "Eine Beschriftung oder ein Kanal ist ungültig"
+      "invalid_label": "Eine Beschriftung oder ein Kanal ist ungültig",
+      "invalid_polling_interval": "Wähle ein unterstütztes Abfrageintervall"
     }
   }
 }

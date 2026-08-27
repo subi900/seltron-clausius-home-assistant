@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 
 import aiohttp
 from homeassistant.config_entries import ConfigEntry
@@ -14,9 +14,11 @@ from .api import AuthenticationError, TokenSet
 from .const import (
     CONF_ACCESS_TOKEN,
     CONF_EXPIRES_AT,
+    CONF_POLLING_INTERVAL,
     CONF_REFRESH_TOKEN,
+    DEFAULT_POLLING_INTERVAL,
     DOMAIN,
-    UPDATE_INTERVAL,
+    polling_interval_seconds,
 )
 from .runtime import RuntimeData, SeltronRuntime
 
@@ -51,11 +53,14 @@ class SeltronCoordinator(DataUpdateCoordinator[RuntimeData]):
             ),
             persist_tokens=persist_tokens,
         )
+        polling_interval = polling_interval_seconds(
+            entry.options.get(CONF_POLLING_INTERVAL, DEFAULT_POLLING_INTERVAL)
+        )
         super().__init__(
             hass,
             _LOGGER,
             name=DOMAIN,
-            update_interval=UPDATE_INTERVAL,
+            update_interval=timedelta(seconds=polling_interval),
         )
 
     async def _async_update_data(self) -> RuntimeData:

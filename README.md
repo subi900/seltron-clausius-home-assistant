@@ -21,7 +21,7 @@ An unofficial Home Assistant custom integration for observing and narrowly contr
 - Party, Eco, Holiday, and domestic-hot-water single-activation controls only when the controller reports the corresponding user-function capability
 - persistent user-selected end-date entities for Party, Eco, and Holiday
 
-Hardware and firmware versions are attached to Home Assistant device-registry entries. Local options can change channel display labels without changing stable channel codes or unique IDs.
+Hardware and firmware versions are attached to Home Assistant device-registry entries. Under **Settings → Devices & services → SeltronHome Clausius → Configure**, local options can change the cloud polling interval and channel display labels without changing stable channel codes or unique IDs. Available intervals are 30 seconds and 1, 2, 3, 4, 5, 10, 15, 20, 25, 30, or 60 minutes; the default is 5 minutes.
 
 ## Safety boundary
 

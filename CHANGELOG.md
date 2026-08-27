@@ -2,6 +2,16 @@
 
 All notable user-visible changes are documented here.
 
+## [0.4.2] - 2026-08-27
+
+### Added
+
+- A Home Assistant integration option for selecting the cloud polling interval: 30 seconds; 1, 2, 3, 4, 5, 10, 15, 20, 25, 30, or 60 minutes.
+
+### Changed
+
+- Existing installations continue to use a five-minute polling interval by default. Saving the option reloads the integration so the selected interval takes effect immediately.
+
 ## [0.4.1] - 2026-08-05
 
 ### Added
