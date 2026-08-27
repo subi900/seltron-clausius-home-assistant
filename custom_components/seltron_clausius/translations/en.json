@@ -33,12 +33,16 @@
   "options": {
     "step": {
       "init": {
-        "title": "Channel labels",
-        "description": "Optional local display labels. Stable channel codes and unique IDs are not changed. The suggested values show the cloud names."
+        "title": "Polling and channel labels",
+        "description": "Choose the polling interval and optional local display labels. Stable channel codes and unique IDs are not changed. The suggested values show the cloud names.",
+        "data": {
+          "polling_interval": "Polling interval (seconds)"
+        }
       }
     },
     "error": {
-      "invalid_label": "A label or channel is invalid"
+      "invalid_label": "A label or channel is invalid",
+      "invalid_polling_interval": "Select a supported polling interval"
     }
   }
 }
