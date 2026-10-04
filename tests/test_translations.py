@@ -19,3 +19,7 @@ def test_option_translation_keys_match_source_strings() -> None:
             expected_data_keys
         )
         assert set(translation["options"]["error"]) == expected_error_keys
+        assert set(translation["config"]["step"]) == set(strings["config"]["step"])
+        assert set(translation["config"]["abort"]) == set(strings["config"]["abort"])
+        for step in ("user", "reauth_confirm", "reconfigure"):
+            assert set(translation["config"]["step"][step]["data"]) == {"email", "password"}

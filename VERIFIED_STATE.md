@@ -1,6 +1,40 @@
 # VERIFIED_STATE
 
-Stand: 2026-08-09 17:30 CEST
+Stand der aktuellen Prüfung: 2026-10-04
+
+## Aktuelle Verifikation: automatische Authentifizierungswiederherstellung
+
+- Geprüft wurde der lokale, noch nicht committete Arbeitsbaum auf `main`, Basis-HEAD `0bb7c16e0822b233c26918cad71bfef799e49995`.
+- Vor der Veröffentlichung wurde `origin` einschließlich Tags erneut abgerufen; Basis-HEAD und `origin/main` waren identisch (`0/0`).
+- Releasevorbereitung `0.4.3`: Manifest, Projektversion, Lockfile und Manifesttest angehoben; Changelog datiert auf 2026-10-04. Die unten dokumentierten lokalen Prüfungen wurden danach erneut erfolgreich ausgeführt. Remote-Veröffentlichung und CI werden nach dem Push separat geprüft; dieses Dokument hält den lokalen Prüfstand vor dem Release-Commit fest.
+- Zugangsdaten werden bei Anmeldung/Reauthentication/Neu-Konfigurieren lokal gespeichert. Token-only-Bestandseinträge bleiben gültig; für Passwort-Fallback ist einmalig dasselbe Konto einzugeben.
+- Refresh vor Passwort-Fallback, einmalige Wiederholung von Lesezugriffen nach HTTP 401, keine automatische Wiederholung von Geräte-Schreibzugriffen. HTTP 403 ist ein Berechtigungs-/Dienstfehler, kein Nachweis eines abgelaufenen Tokens.
+- Temporäre Auth0-Fehler, fehlerhafte Antworten und Netzfehler lösen keine Reauthentication aus. Abgelehnte Zugangsdaten erfordern weiterhin Benutzerkorrektur.
+- Tokenpersistenz erhält Zugangsdaten und löst keinen Integration-Reload aus. Optionsänderungen laden weiterhin neu. Diagnoseexporte redigieren E-Mail/Passwort, auch ohne verfügbaren Coordinator.
+- Lokale Credentials sind nicht separat verschlüsselt und können in HA-Backups enthalten sein; Hinweise in README, SECURITY und beiden Übersetzungen ergänzt.
+
+Tatsächlich ausgeführte Prüfungen (Python 3.11.15, jeweils ohne geerbten `PYTHONPATH`):
+
+| Prüfung | Ergebnis |
+|---|---|
+| `uv sync --frozen --extra test` | erfolgreich |
+| `uv run pytest -q` | 125 bestanden; eine bestehende DeprecationWarning aus Home Assistant/aiohttp |
+| `uv run pytest -q --cov=custom_components.seltron_clausius --cov-report=term` | 125 bestanden, 83 % Gesamtcoverage |
+| `uvx ruff check custom_components tests` | erfolgreich |
+| `uv run python -m compileall -q custom_components tests` | erfolgreich |
+| `uv lock --check` | erfolgreich |
+| `uv run python -m pip check` | keine defekten Abhängigkeiten |
+| Gitleaks 8.30.1, Git-Historie | sieben Commits, keine Leaks |
+| Gitleaks 8.30.1, Arbeitsbaum `custom_components` und `tests` | keine Leaks |
+| `git diff --check` | erfolgreich |
+
+Die Tests verwenden synthetische Zugangsdaten und simulierte HTTP-Antworten. Kein Live-Login, kein Hardwaretest, kein Zugriff auf die HA-Installation des Benutzers und keine Seltron-Cloud-Schreiboperation. Die Testabhängigkeit bleibt Home Assistant 2023.12.4; der neue Reconfigure-Handler ist direkt getestet, eine reale aktuelle HA-Oberfläche wurde nicht geprüft.
+
+## Historischer Basisstand (nicht der aktuelle Arbeitsbaum)
+
+Die folgenden Angaben beschreiben ausschließlich die ursprüngliche Übergabe vom 2026-08-09 und werden durch die aktuelle Verifikation oben ergänzt/überholt.
+
+Historischer Stand: 2026-08-09 17:30 CEST
 
 ## Geltungsbereich
 

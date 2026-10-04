@@ -27,7 +27,7 @@ CONF_PASSWORD = "password"
 
 
 class SeltronConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
-    """Configure SeltronHome without retaining account credentials."""
+    """Configure SeltronHome with local credentials for automatic recovery."""
 
     VERSION = 1
 
@@ -49,13 +49,15 @@ class SeltronConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 if not installations:
                     errors["base"] = "no_installations"
                 else:
-                    # Stable duplicate protection without storing the email address.
+                    # Preserve the existing stable account identity.
                     unique_id = hashlib.sha256(email.encode("utf-8")).hexdigest()
                     await self.async_set_unique_id(unique_id)
                     self._abort_if_unique_id_configured()
                     return self.async_create_entry(
                         title="SeltronHome Clausius",
                         data={
+                            CONF_EMAIL: email,
+                            CONF_PASSWORD: password,
                             CONF_ACCESS_TOKEN: tokens.access_token,
                             CONF_REFRESH_TOKEN: tokens.refresh_token,
                             CONF_EXPIRES_AT: tokens.expires_at,
@@ -83,7 +85,14 @@ class SeltronConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         return await self.async_step_reauth_confirm()
 
     async def async_step_reauth_confirm(self, user_input=None) -> FlowResult:
-        """Replace tokens only after the same account authenticates successfully."""
+        """Replace credentials only after the same account authenticates."""
+        return await self._async_credentials(user_input, "reauth_confirm")
+
+    async def async_step_reconfigure(self, user_input=None) -> FlowResult:
+        """Allow existing token-only entries to save credentials without removal."""
+        return await self._async_credentials(user_input, "reconfigure")
+
+    async def _async_credentials(self, user_input, step_id: str) -> FlowResult:
         errors: dict[str, str] = {}
         if user_input is not None:
             email = str(user_input[CONF_EMAIL]).strip().casefold()
@@ -106,13 +115,19 @@ class SeltronConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                         self.hass.config_entries.async_update_entry(
                             entry,
                             data={
+                                **entry.data,
+                                CONF_EMAIL: email,
+                                CONF_PASSWORD: password,
                                 CONF_ACCESS_TOKEN: tokens.access_token,
                                 CONF_REFRESH_TOKEN: tokens.refresh_token,
                                 CONF_EXPIRES_AT: tokens.expires_at,
                             },
                         )
                         await self.hass.config_entries.async_reload(entry.entry_id)
-                        return self.async_abort(reason="reauth_successful")
+                        return self.async_abort(
+                            reason="reauth_successful" if step_id == "reauth_confirm"
+                            else "reconfigure_successful"
+                        )
                 except AuthenticationError:
                     errors["base"] = "invalid_auth"
                 except (
@@ -127,7 +142,7 @@ class SeltronConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     password = ""
 
         return self.async_show_form(
-            step_id="reauth_confirm",
+            step_id=step_id,
             data_schema=vol.Schema(
                 {
                     vol.Required(CONF_EMAIL): str,

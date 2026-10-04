@@ -12,14 +12,18 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     coordinator = SeltronCoordinator(hass, entry)
     await coordinator.async_config_entry_first_refresh()
     hass.data.setdefault(DOMAIN, {})[entry.entry_id] = coordinator
-    entry.async_on_unload(entry.add_update_listener(_async_reload_entry))
+    options = dict(entry.options)
+
+    async def reload_options(hass: HomeAssistant, updated: ConfigEntry) -> None:
+        nonlocal options
+        if updated.options != options:
+            options = dict(updated.options)
+            await hass.config_entries.async_reload(updated.entry_id)
+
+    # Token persistence also invokes update listeners; only options require reload.
+    entry.async_on_unload(entry.add_update_listener(reload_options))
     await hass.config_entries.async_forward_entry_setups(entry, list(PLATFORMS))
     return True
-
-
-async def _async_reload_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
-    """Reload entities so changed local labels take effect."""
-    await hass.config_entries.async_reload(entry.entry_id)
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:

@@ -35,7 +35,7 @@ class TokenSet:
 async def async_password_login(
     session: aiohttp.ClientSession, email: str, password: str
 ) -> TokenSet:
-    """Exchange locally supplied credentials for tokens without retaining the password."""
+    """Exchange credentials for tokens without logging request or response bodies."""
     payload = {
         "grant_type": "http://auth0.com/oauth/grant-type/password-realm",
         "client_id": AUTH0_CLIENT_ID,
@@ -48,18 +48,45 @@ async def async_password_login(
     async with session.post(
         AUTH0_TOKEN_URL, data=payload, timeout=REQUEST_TIMEOUT
     ) as response:
-        if response.status != 200:
-            raise AuthenticationError(f"Auth0 authentication failed (HTTP {response.status})")
-        data = await response.json()
-    return TokenSet(
-        access_token=data["access_token"],
-        refresh_token=data["refresh_token"],
-        expires_at=time.time() + int(data["expires_in"]),
-    )
+        return await _async_token_response(response)
 
 
 class AuthenticationError(Exception):
     """Authentication failed without exposing response content or credentials."""
+
+
+class ServiceError(RuntimeError):
+    """A sanitized service/permission failure that must not trigger reauthentication."""
+
+
+async def _async_token_response(
+    response: aiohttp.ClientResponse, refresh_token: str | None = None
+) -> TokenSet:
+    # A failed server/rate-limit request says nothing about credential validity.
+    if response.status not in {200, 400, 401, 403}:
+        raise ServiceError(f"Auth0 service unavailable (HTTP {response.status})")
+    try:
+        data = await response.json()
+    except (ValueError, aiohttp.ClientError):
+        raise ServiceError("Auth0 returned an invalid response") from None
+    if not isinstance(data, dict):
+        raise ServiceError("Auth0 returned an invalid response")
+    if response.status != 200:
+        rejected = {"invalid_grant", "invalid_user_password"}
+        if isinstance(data.get("error"), str) and data["error"] in rejected:
+            raise AuthenticationError("Auth0 credentials were rejected")
+        raise ServiceError(f"Auth0 request failed (HTTP {response.status})")
+    try:
+        access = data["access_token"]
+        refresh = data.get("refresh_token", refresh_token)
+        expiry = int(data["expires_in"])
+        if not isinstance(access, str) or not access:
+            raise ValueError
+        if not isinstance(refresh, str) or not refresh or expiry <= 0:
+            raise ValueError
+    except (KeyError, TypeError, ValueError, OverflowError):
+        raise ServiceError("Auth0 returned an invalid token set") from None
+    return TokenSet(access, refresh, time.time() + expiry)
 
 
 async def async_refresh_tokens(
@@ -74,14 +101,7 @@ async def async_refresh_tokens(
     async with session.post(
         AUTH0_TOKEN_URL, data=payload, timeout=REQUEST_TIMEOUT
     ) as response:
-        if response.status != 200:
-            raise AuthenticationError(f"Auth0 token refresh failed (HTTP {response.status})")
-        data = await response.json()
-    return TokenSet(
-        access_token=data["access_token"],
-        refresh_token=data.get("refresh_token", refresh_token),
-        expires_at=time.time() + int(data["expires_in"]),
-    )
+        return await _async_token_response(response, refresh_token)
 
 
 class UnsafePathError(ValueError):
@@ -137,9 +157,10 @@ class SeltronApi:
     @staticmethod
     def _raise_for_status(response: aiohttp.ClientResponse) -> None:
         """Map rejected credentials to Home Assistant reauthentication."""
-        if response.status in {401, 403}:
+        if response.status == 401:
             raise AuthenticationError("Seltron access token was rejected")
-        response.raise_for_status()
+        if response.status >= 400:
+            raise ServiceError(f"Seltron request failed (HTTP {response.status})")
 
     async def async_get(self, path: str) -> Any:
         """Fetch JSON data using the only supported Seltron data verb: GET."""

@@ -8,7 +8,7 @@ from custom_components.seltron_clausius.api import Installation, TokenSet
 
 
 @pytest.mark.asyncio
-async def test_config_flow_discards_password_and_stores_only_tokens(monkeypatch) -> None:
+async def test_config_flow_stores_credentials_for_automatic_recovery(monkeypatch) -> None:
     captured = {}
 
     async def login(session, email, password):
@@ -38,14 +38,16 @@ async def test_config_flow_discards_password_and_stores_only_tokens(monkeypatch)
     )
 
     assert result["type"].value == "create_entry"
-    assert set(result["data"]) == {"access_token", "refresh_token", "expires_at"}
+    assert set(result["data"]) == {"access_token", "refresh_token", "expires_at", "email", "password"}
     assert result["data"]["refresh_token"] == "refresh"
     assert captured == {"email": "person@example.com", "password": "secret"}
-    assert "email" not in result["data"] and "password" not in result["data"]
+    assert result["data"]["email"] == "person@example.com"
+    assert result["data"]["password"] == "secret"
 
 
 @pytest.mark.asyncio
-async def test_reauth_replaces_tokens_for_same_account(monkeypatch) -> None:
+@pytest.mark.parametrize("step", ["reauth_confirm", "reconfigure"])
+async def test_reauth_replaces_tokens_for_same_account(monkeypatch, step) -> None:
     email = "person@example.com"
     entry = SimpleNamespace(
         entry_id="entry-id",
@@ -86,18 +88,43 @@ async def test_reauth_replaces_tokens_for_same_account(monkeypatch) -> None:
     flow.hass = SimpleNamespace(config_entries=Entries())
     flow.context = {"entry_id": "entry-id"}
 
-    result = await flow.async_step_reauth_confirm(
+    result = await getattr(flow, f"async_step_{step}")(
         {config_flow.CONF_EMAIL: email, config_flow.CONF_PASSWORD: "new-secret"}
     )
 
     assert result["type"].value == "abort"
-    assert result["reason"] == "reauth_successful"
+    assert result["reason"] == ("reauth_successful" if step == "reauth_confirm" else "reconfigure_successful")
     assert updated == {
         "access_token": "new",
         "refresh_token": "new-refresh",
         "expires_at": 5678.0,
+        "email": email,
+        "password": "new-secret",
     }
 
 
 async def _noop_unique_id(value):
     assert len(value) == 64
+
+
+@pytest.mark.parametrize("step", ["reauth_confirm", "reconfigure"])
+async def test_credentials_cannot_switch_accounts_or_echo_saved_password(monkeypatch, step):
+    from unittest.mock import AsyncMock, Mock
+
+    entry = SimpleNamespace(
+        unique_id=hashlib.sha256(b"synthetic@example.invalid").hexdigest(),
+        data={"password": "existing-synthetic-password"},
+    )
+    entries = SimpleNamespace(async_get_entry=lambda _: entry, async_update_entry=Mock())
+    flow = config_flow.SeltronConfigFlow()
+    flow.hass = SimpleNamespace(config_entries=entries)
+    flow.context = {"entry_id": "entry"}
+    login = AsyncMock()
+    monkeypatch.setattr(config_flow, "async_password_login", login)
+    result = await getattr(flow, f"async_step_{step}")({
+        "email": "different@example.invalid", "password": "dummy",
+    })
+    assert result["errors"] == {"base": "wrong_account"}
+    assert "existing-synthetic-password" not in repr(result)
+    login.assert_not_awaited()
+    entries.async_update_entry.assert_not_called()

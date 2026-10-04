@@ -5,6 +5,7 @@ from datetime import datetime, timedelta
 
 import aiohttp
 from homeassistant.config_entries import ConfigEntry
+from homeassistant.const import CONF_EMAIL, CONF_PASSWORD
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryAuthFailed, HomeAssistantError
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
@@ -52,6 +53,9 @@ class SeltronCoordinator(DataUpdateCoordinator[RuntimeData]):
                 float(entry.data[CONF_EXPIRES_AT]),
             ),
             persist_tokens=persist_tokens,
+            credentials=(entry.data[CONF_EMAIL], entry.data[CONF_PASSWORD])
+            if entry.data.get(CONF_EMAIL) and entry.data.get(CONF_PASSWORD)
+            else None,
         )
         polling_interval = polling_interval_seconds(
             entry.options.get(CONF_POLLING_INTERVAL, DEFAULT_POLLING_INTERVAL)

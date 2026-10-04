@@ -47,7 +47,13 @@ This software cannot make a cloud-controlled heating system inherently safe. Kee
 4. Restart Home Assistant when you are ready.
 5. Open **Settings → Devices & services → Add integration**, search for **SeltronHome Clausius**, and enter your SeltronHome account credentials.
 
-The password is used only for the immediate Auth0 exchange. The Config Entry stores access/refresh tokens and their expiry, not the email address or password. Reauthentication requires the same account.
+The Config Entry stores the email address and password locally alongside access/refresh tokens and their expiry. The integration first renews access via the refresh token; only a rejected refresh token triggers automatic sign-in with the saved credentials. Concurrent polling and controls share the same authentication lock. A rejected access token causes at most one renewal and retry of the read; control writes are never automatically replayed.
+
+Existing token-only installations continue working. To enable automatic sign-in without removing the integration, open **Settings → Devices & services → SeltronHome Clausius → entry menu (⋮) → Reconfigure** and enter the original account credentials once. Alternatively, the next required reauthentication saves them. Entity IDs and polling/label options are retained. Saved passwords are never prefilled into forms.
+
+Temporary network, rate-limit and server errors do not request reauthentication; Home Assistant retries polling normally. Automatic password attempts after a temporary login failure are spaced at least five minutes apart per loaded integration. Incorrect/revoked credentials or repeated rejection of newly issued access tokens still require user intervention. These limits avoid endless login loops; cloud outages can still make entities temporarily unavailable.
+
+**Security:** credentials are not separately encrypted by this integration. Anyone with access to Home Assistant configuration storage or a readable backup may obtain them. Protect configuration access and encrypt/restrict backups. Diagnostics redact both email and password. Never publish `.storage` files or backups.
 
 ### Manual installation
 

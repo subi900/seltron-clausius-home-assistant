@@ -2,10 +2,15 @@ from __future__ import annotations
 
 from dataclasses import replace
 from datetime import datetime
+from unittest.mock import AsyncMock
 
 import pytest
 
-from custom_components.seltron_clausius.api import Installation, TokenSet
+from custom_components.seltron_clausius.api import (
+    AuthenticationError,
+    Installation,
+    TokenSet,
+)
 from custom_components.seltron_clausius.runtime import (
     SeltronRuntime,
     WriteUnavailableError,
@@ -124,6 +129,36 @@ class DelayedModeWriteApi(WriteApi):
             controller["circuits"] = [circuit]
             self.installation = replace(self.installation, controller=controller)
         return self.installation
+
+
+@pytest.mark.parametrize("failure_at", ["write", "readback"])
+async def test_auth_recovery_never_replays_control_write(failure_at):
+    api = WriteApi(make_installation())
+    runtime = make_runtime(api)
+    runtime._refresh_tokens = AsyncMock(return_value=TokenSet("renewed", "rotated", 10000))
+    await runtime.async_update()
+    if failure_at == "write":
+        api.async_set_operation_mode = AsyncMock(side_effect=AuthenticationError("rejected"))
+        with pytest.raises(AuthenticationError):
+            await runtime.async_set_operation_mode("HC1", "Day")
+        api.async_set_operation_mode.assert_awaited_once()
+        runtime._refresh_tokens.assert_not_awaited()
+    else:
+        read = api.async_refresh_installation
+        calls = 0
+
+        async def fail_readback_once(installation):
+            nonlocal calls
+            calls += 1
+            if calls == 2:
+                raise AuthenticationError("expired during readback")
+            return await read(installation)
+
+        api.async_refresh_installation = fail_readback_once
+        result = await runtime.async_set_operation_mode("HC1", "Day")
+        assert result.status.circuits[0].mode == "Day"
+        assert api.mode_calls == [("HC1", "Day")]
+        runtime._refresh_tokens.assert_awaited_once()
 
 
 def make_runtime(api: WriteApi) -> SeltronRuntime:

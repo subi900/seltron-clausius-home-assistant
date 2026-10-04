@@ -58,20 +58,22 @@ async def async_get_config_entry_diagnostics(
     hass: HomeAssistant, entry: ConfigEntry
 ) -> dict[str, Any]:
     """Return useful controller status without account or installation identifiers."""
-    coordinator = hass.data[DOMAIN][entry.entry_id]
+    coordinator = hass.data.get(DOMAIN, {}).get(entry.entry_id)
     return async_redact_data(
         {
             "config_entry": {
                 "data": dict(entry.data),
                 "options": dict(entry.options),
             },
-            "runtime": asdict(coordinator.data),
+            "runtime": asdict(coordinator.data) if coordinator and coordinator.data else None,
         },
         {
             CONF_ACCESS_TOKEN,
             CONF_REFRESH_TOKEN,
             CONF_EXPIRES_AT,
             CONF_LABELS,
+            "email",
+            "password",
             "subscription_id",
             "resource_group_id",
             "gateway_id",

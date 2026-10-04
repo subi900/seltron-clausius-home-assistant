@@ -3,7 +3,7 @@
     "step": {
       "user": {
         "title": "SeltronHome Clausius",
-        "description": "SeltronHome zur Zustandsanzeige und für eng begrenzte, rückgelesene WDC-Bedienfunktionen verbinden.",
+        "description": "SeltronHome zur Zustandsanzeige und für eng begrenzte, rückgelesene WDC-Bedienfunktionen verbinden. E-Mail und Passwort werden zur automatischen Neuanmeldung lokal in Home Assistant gespeichert, nicht separat verschlüsselt. Sie können in Backups enthalten sein; schütze Konfiguration und Backups.",
         "data": {
           "email": "E-Mail",
           "password": "Passwort"
@@ -11,7 +11,15 @@
       },
       "reauth_confirm": {
         "title": "SeltronHome neu verbinden",
-        "description": "Melde dich erneut mit demselben SeltronHome-Konto an.",
+        "description": "Melde dich erneut mit demselben SeltronHome-Konto an. E-Mail und Passwort werden zur automatischen Neuanmeldung lokal in Home Assistant gespeichert, nicht separat verschlüsselt. Sie können in Backups enthalten sein; schütze Konfiguration und Backups.",
+        "data": {
+          "email": "E-Mail",
+          "password": "Passwort"
+        }
+      },
+      "reconfigure": {
+        "title": "SeltronHome-Zugangsdaten speichern",
+        "description": "Verwende dasselbe Konto wie bei der Ersteinrichtung. E-Mail und Passwort werden zur automatischen Neuanmeldung lokal in Home Assistant gespeichert, nicht separat verschlüsselt. Sie können in Backups enthalten sein; schütze Konfiguration und Backups.",
         "data": {
           "email": "E-Mail",
           "password": "Passwort"
@@ -26,6 +34,7 @@
     },
     "abort": {
       "already_configured": "Dieses SeltronHome-Konto ist bereits eingerichtet",
+      "reconfigure_successful": "Zugangsdaten wurden gespeichert und SeltronHome neu geladen",
       "reauth_successful": "SeltronHome wurde erfolgreich neu verbunden",
       "reauth_entry_missing": "Der SeltronHome-Konfigurationseintrag existiert nicht mehr"
     }

@@ -7,7 +7,15 @@ from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from typing import Any, Protocol
 
-from .api import Installation, SeltronApi, TokenSet, async_refresh_tokens
+from .api import (
+    AuthenticationError,
+    Installation,
+    SeltronApi,
+    ServiceError,
+    TokenSet,
+    async_password_login,
+    async_refresh_tokens,
+)
 from .controls import validate_operation_mode, validate_setpoint, validate_user_function
 from .models import HeatingCircuitState, InstallationStatus, parse_installation_status
 
@@ -53,6 +61,8 @@ class SeltronRuntime:
         *,
         persist_tokens: Callable[[TokenSet], Awaitable[None]],
         refresh_tokens: Callable[[Any, str], Awaitable[TokenSet]] = async_refresh_tokens,
+        password_login: Callable[[Any, str, str], Awaitable[TokenSet]] = async_password_login,
+        credentials: tuple[str, str] | None = None,
         api_factory: Callable[..., _Api] = SeltronApi,
         now: Callable[[], float] = time.time,
         confirmation_delays: tuple[float, ...] = (0.0, 1.0, 2.0),
@@ -61,6 +71,10 @@ class SeltronRuntime:
         self._tokens = tokens
         self._persist_tokens = persist_tokens
         self._refresh_tokens = refresh_tokens
+        self._password_login = password_login
+        self._credentials = credentials
+        self._credentials_rejected = False
+        self._login_retry_at = 0.0
         self._api_factory = api_factory
         self._now = now
         if not confirmation_delays:
@@ -69,16 +83,47 @@ class SeltronRuntime:
         self._installation: Installation | None = None
         self._lock = asyncio.Lock()
 
-    async def _async_api(self) -> _Api:
-        if self._tokens.expires_at <= self._now() + 60:
+    async def _async_renew_tokens(self) -> None:
+        """Try refresh first, falling back only for a proven credential rejection."""
+        if self._credentials_rejected:
+            raise AuthenticationError("Saved Seltron credentials were rejected")
+        try:
             rotated = await self._refresh_tokens(
                 self._session, self._tokens.refresh_token
             )
-            await self._persist_tokens(rotated)
-            self._tokens = rotated
+        except AuthenticationError:
+            if not self._credentials:
+                raise
+            if self._now() < self._login_retry_at:
+                raise ServiceError("Automatic Seltron login is temporarily deferred") from None
+            self._login_retry_at = self._now() + 300
+            try:
+                rotated = await self._password_login(self._session, *self._credentials)
+            except AuthenticationError:
+                self._credentials_rejected = True
+                raise
+        await self._persist_tokens(rotated)
+        self._tokens = rotated
+
+    async def _async_api(self) -> _Api:
+        if self._tokens.expires_at <= self._now() + 60:
+            await self._async_renew_tokens()
         return self._api_factory(
             self._session, access_token=self._tokens.access_token
         )
+
+    async def _async_read(self) -> tuple[_Api, RuntimeData]:
+        """Recover a rejected access token once; caller holds the runtime lock."""
+        previous = self._tokens
+        api = await self._async_api()
+        try:
+            return api, await self._async_refresh_installation(api)
+        except AuthenticationError:
+            if self._tokens is not previous:
+                raise
+            await self._async_renew_tokens()
+            api = self._api_factory(self._session, access_token=self._tokens.access_token)
+            return api, await self._async_refresh_installation(api)
 
     async def _async_refresh_installation(self, api: _Api) -> RuntimeData:
         if self._installation is None:
@@ -128,8 +173,8 @@ class SeltronRuntime:
     async def async_update(self) -> RuntimeData:
         """Refresh tokens if needed and poll the known installation."""
         async with self._lock:
-            api = await self._async_api()
-            return await self._async_refresh_installation(api)
+            _, data = await self._async_read()
+            return data
 
     async def async_set_operation_mode(
         self, circuit_code: str, mode: str
@@ -137,8 +182,7 @@ class SeltronRuntime:
         """Validate, write, reread, and verify a confirmed circuit mode."""
         async with self._lock:
             requested = validate_operation_mode(circuit_code, mode)
-            api = await self._async_api()
-            current_data = await self._async_refresh_installation(api)
+            api, current_data = await self._async_read()
             self._ensure_write_available(current_data)
             circuit = self._circuit(current_data, circuit_code)
             if circuit.mode == requested:
@@ -150,7 +194,7 @@ class SeltronRuntime:
             for delay in self._confirmation_delays:
                 if delay > 0:
                     await asyncio.sleep(delay)
-                reread = await self._async_refresh_installation(api)
+                api, reread = await self._async_read()
                 if self._circuit(reread, circuit.code).mode == requested:
                     return reread
             raise WriteVerificationError(
@@ -163,8 +207,7 @@ class SeltronRuntime:
         """Validate, write only one key, reread, and verify a confirmed setpoint."""
         async with self._lock:
             requested = validate_setpoint(circuit_code, key, value)
-            api = await self._async_api()
-            current_data = await self._async_refresh_installation(api)
+            api, current_data = await self._async_read()
             self._ensure_write_available(current_data)
             circuit = self._circuit(current_data, circuit_code)
             current = next((item for item in circuit.setpoints if item.key == key), None)
@@ -181,7 +224,7 @@ class SeltronRuntime:
             for delay in self._confirmation_delays:
                 if delay > 0:
                     await asyncio.sleep(delay)
-                reread = await self._async_refresh_installation(api)
+                api, reread = await self._async_read()
                 confirmed = next(
                     (
                         item
@@ -206,8 +249,7 @@ class SeltronRuntime:
         """Write and verify one allowlisted Clausius normal-user function."""
         async with self._lock:
             requested = validate_user_function(circuit_code, function)
-            api = await self._async_api()
-            current_data = await self._async_refresh_installation(api)
+            api, current_data = await self._async_read()
             self._ensure_write_available(current_data)
             circuit = self._circuit(current_data, circuit_code)
             if requested not in circuit.supported_user_functions:
@@ -256,7 +298,7 @@ class SeltronRuntime:
             for delay in self._confirmation_delays:
                 if delay > 0:
                     await asyncio.sleep(delay)
-                reread = await self._async_refresh_installation(api)
+                api, reread = await self._async_read()
                 confirmed = self._circuit(reread, circuit.code)
                 if confirmed.user_function != requested:
                     continue

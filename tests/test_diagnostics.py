@@ -48,6 +48,8 @@ async def test_config_entry_diagnostics_redacts_tokens_labels_and_installation_i
             "access_token": "private-access",
             "refresh_token": "private-refresh",
             "expires_at": 1234.0,
+            "email": "private-email",
+            "password": "private-password",
         },
         options={"labels": {"relay:R1": "private-label"}},
     )
@@ -59,4 +61,6 @@ async def test_config_entry_diagnostics_redacts_tokens_labels_and_installation_i
     assert "private-access" not in rendered
     assert "private-refresh" not in rendered
     assert "private-label" not in rendered
+    assert "private-email" not in rendered
+    assert "private-password" not in rendered
     assert diagnostics["runtime"]["status"]["gateway"]["model"] == "GWD3E"

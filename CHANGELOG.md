@@ -2,6 +2,24 @@
 
 All notable user-visible changes are documented here.
 
+## [0.4.3] - 2026-10-04
+
+### Fixed
+
+- Temporary Auth0/network errors, rate limits, malformed token responses and Seltron permission failures no longer incorrectly trigger reauthentication.
+- A rejected access token now triggers one bounded renewal and read retry. Control writes are never replayed automatically.
+- Persisting rotated tokens no longer reloads the integration; option changes still do.
+
+### Added
+
+- Locally saved email/password and automatic sign-in when the refresh grant is rejected, with serialized recovery and bounded password attempts.
+- A same-account **Reconfigure** flow to supply credentials for existing token-only installations without removing entities or options.
+- English/German credential-storage notices and diagnostic redaction of saved email/password, including when setup is unavailable.
+
+### Security
+
+- Credentials are stored in the Home Assistant Config Entry without separate encryption and may be present in backups. Protect configuration storage and backups. Invalid credentials still require manual correction.
+
 ## [0.4.2] - 2026-08-27
 
 ### Added

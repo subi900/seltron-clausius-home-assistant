@@ -3,7 +3,7 @@
     "step": {
       "user": {
         "title": "SeltronHome Clausius",
-        "description": "Connect to SeltronHome for status monitoring and narrowly verified WDC controls.",
+        "description": "Connect to SeltronHome for status monitoring and narrowly verified WDC controls. Email and password are stored locally in Home Assistant for automatic sign-in, without separate encryption. They may be included in backups; protect your configuration and backups.",
         "data": {
           "email": "Email",
           "password": "Password"
@@ -11,7 +11,15 @@
       },
       "reauth_confirm": {
         "title": "Reconnect SeltronHome",
-        "description": "Sign in again with the same SeltronHome account.",
+        "description": "Sign in again with the same SeltronHome account. Email and password are stored locally in Home Assistant for automatic sign-in, without separate encryption. They may be included in backups; protect your configuration and backups.",
+        "data": {
+          "email": "Email",
+          "password": "Password"
+        }
+      },
+      "reconfigure": {
+        "title": "Save SeltronHome credentials",
+        "description": "Use the same account as originally configured. Email and password are stored locally in Home Assistant for automatic sign-in, without separate encryption. They may be included in backups; protect your configuration and backups.",
         "data": {
           "email": "Email",
           "password": "Password"
@@ -26,6 +34,7 @@
     },
     "abort": {
       "already_configured": "This SeltronHome account is already configured",
+      "reconfigure_successful": "Credentials saved and SeltronHome reloaded",
       "reauth_successful": "SeltronHome was reconnected successfully",
       "reauth_entry_missing": "The SeltronHome configuration entry no longer exists"
     }
